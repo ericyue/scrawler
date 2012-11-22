@@ -19,9 +19,9 @@ OR You can get info at Sina Weibo @ericyue
 Eric Yue @ Moonlight Labs
 hi.moonlight@gmail.com
 
-http://twitter.com/ericyue
-http://weibo.com/ericyue
-http://github.com/ericyue
+1. http://twitter.com/ericyue
+2. http://weibo.com/ericyue
+3. http://github.com/ericyue
 
 ##License
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this work except in compliance with the License. You may obtain a copy of the License in the LICENSE file, or at:

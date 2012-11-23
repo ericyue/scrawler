@@ -7,31 +7,36 @@ import json
 import multiprocessing
 import urllib
 import cookielib
-from bs4 import BeautifulSoup as BS
+from BeautifulSoup import BeautifulSoup as BS
 
 class Renren:
   login_page = "http://www.renren.com/PLogin.do"
-  opener = None
+  cookie={"t":""}
+  opener=urllib2.build_opener(urllib2.HTTPCookieProcessor(cookielib.CookieJar())) 
+  urllib2.install_opener(opener)
 
-  def login(self,user,password):
-    try:
-      cj = cookielib.CookieJar()
-      self.opener=urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-      chrome="Mozilla/5.1 (Macintosh; Intel Mac OS X 10_7_1) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11"
-      self.opener.addheaders = [('User-agent',chrome)]
-      data = urllib.urlencode({"email":user,"password":password})
-      self.opener.open(self.login_page,data)
-      print "Login Successfully!"
-    except Exception,e:
-      raise Exception(e)
+  def login(self,cookie):
+    self.cookie['t']=cookie
+    print "new cookie:",cookie
+    cookie=urllib.urlencode(self.cookie)
+    req = urllib2.Request("http://www.renren.com")
+    req.add_header('Cookie', cookie)
+    content = urllib2.urlopen(req).read()
 
+  def open(self,url):
+    req = urllib2.Request(url)
+    cookie=urllib.urlencode(self.cookie)
+    req.add_header('Cookie', cookie)
+    request = urllib2.urlopen(req)
+    return request
+     
   def get_blog(self,uid):
     blog_base="http://blog.renren.com/blog/%s/friends?curpage=" % uid
     limit=0
-    output=open('./renren_blogs/%s'+uid,'a')
+    output=open('./data/renren_blogs/%s' % uid,'a')
     while True:
       print blog_base+str(limit)
-      op=self.opener.open(blog_base+str(limit))
+      op=self.open(blog_base+str(limit))
       data=op.read()
       unique_blogs=set()
       blog_list=re.finditer("http://blog.renren.com/blog/[0-9]{4,12}/[0-9]{5,13}",data)
@@ -45,7 +50,7 @@ class Renren:
   def visit(self,uid):
     profile_base="http://www.renren.com/%s/profile?portal=profileFootprint&ref=profile_footprint#pdetails" % uid
     try:
-      op=self.opener.open(profile_base)
+      op=self.open(profile_base)
     except:
       print "error"
       return
@@ -54,8 +59,9 @@ class Renren:
   def get_my_friends_list(self): 
     friend_list_url="http://friend.renren.com/myfriendlistx.do"
     mylist=[]
-    op = self.opener.open(friend_list_url)
+    op = self.open(friend_list_url)
     data=op.read()
+    print data
     data=re.search('friends=\[{.*?}\];',data)
     data=data.group()
     data=data[8:-1]
@@ -71,14 +77,14 @@ class Renren:
   def get_new_status(self,today):
     status_all_base="http://status.renren.com/GetFriendDoing.do?curpage="
     status_dict=[]
-    output=open('renren_new_status','a')
+    output=open('./data/renren_new_status','a')
     limit=0
     re_h=re.compile('</?\w+[^>]*>')
 
     while True:
       status_url=status_all_base+"%s" % limit
       print status_url
-      op = self.opener.open(status_url)
+      op = self.open(status_url)
       try:
         data=op.read()
       except:
@@ -108,7 +114,7 @@ class Renren:
     while True:
       status_url=status_base+"%s" % limit
       print status_url
-      op = self.opener.open(status_url)
+      op = self.open(status_url)
       try:
         data=op.read()
       except:
@@ -140,7 +146,7 @@ class Renren:
       buffer_lines=[]
       search_url=search_base_url+str(10*loop)
       print "processing - ",search_url
-      op = self.opener.open(search_url)
+      op = self.open(search_url)
       print "read ok"
       data = op.read()
       user_ids=set()
@@ -157,7 +163,7 @@ class Renren:
       for uid in user_ids:
         a+=1
         profile_url=profile_base_url % uid
-        op = self.opener.open(profile_url)
+        op = self.open(profile_url)
         content=op.read()
         profile_soup=BS(content)
         try:

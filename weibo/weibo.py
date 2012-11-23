@@ -1,5 +1,5 @@
-#! /usr/bin/env python
 #coding=utf8
+
 import urllib
 import urllib2
 import cookielib
@@ -8,6 +8,7 @@ import re
 import os
 import json
 import hashlib
+
 from BeautifulSoup import BeautifulSoup as BS
 
 class Weibo:
@@ -71,7 +72,8 @@ class Weibo:
 
   def login(self,username,pwd):
       #check if the cookies file exists
-      if os.path.isfile('cookies_weibo_'+username):
+      if os.path.isfile('./data/cookies_weibo_'+username):
+        print "load cookies from file"
         self.cj=cookielib.LWPCookieJar()
         self.cj.load('cookies_weibo_'+username)
         self.cookie_support = urllib2.HTTPCookieProcessor(self.cj)
@@ -90,8 +92,6 @@ class Weibo:
             print "login successfully!"
         except Exception,what:
             print 'login error!',what
-   
-        print "load cookies from file"
         self.get_uid()
         return
       
@@ -127,7 +127,7 @@ class Weibo:
       try:
           urllib2.urlopen(login_url)
           print "login successfully!"
-          self.cj.save('cookies_weibo_'+username)
+          self.cj.save('./data/cookies_weibo_'+username)
           print "save cookies to file"
       except Exception,what:
           print 'login error!',what

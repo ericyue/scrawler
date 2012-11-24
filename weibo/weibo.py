@@ -1,5 +1,4 @@
 #coding=utf8
-
 import urllib
 import urllib2
 import cookielib

@@ -9,6 +9,7 @@ import urllib
 import cookielib
 from BeautifulSoup import BeautifulSoup as BS
 
+
 class Renren:
     login_page = "http://www.renren.com/PLogin.do"
     cookie={"t":""}

@@ -36,7 +36,7 @@ nosetests.xml
 
 # Account info
 ACCOUNT
-
+COOKIE
 # Data 
 data
 cookies*

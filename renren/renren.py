@@ -11,7 +11,6 @@ from BeautifulSoup import BeautifulSoup as BS
 
 
 class Renren:
-    login_page = "http://www.renren.com/PLogin.do"
     cookie={"t":""}
     opener=urllib2.build_opener(urllib2.HTTPCookieProcessor(cookielib.CookieJar())) 
     urllib2.install_opener(opener)
@@ -30,38 +29,36 @@ class Renren:
             request = urllib2.urlopen(req)
         return request
          
-    def get_blog(self,uid):
+    def get_user_blog_ids(self,uid):
         blog_base="http://blog.renren.com/blog/%s/friends?curpage=" % uid
-        limit=0
-        output=open('./data/renren_blogs/%s' % uid,'a')
+        page=0
+        unique_blogs=set() 
         while True:
-            print blog_base+str(limit)
-            op=self.open(blog_base+str(limit))
+            print "parsing... ",blog_base+str(page)
+            op=self.open(blog_base+str(page))
             data=op.read()
-            unique_blogs=set()
             blog_list=re.finditer("http://blog.renren.com/blog/[0-9]{4,12}/[0-9]{5,13}",data)
+            if len(blog_list)==0:
+                break
             for blog in blog_list:
+                if blog.group not in unique_blogs:
+                    print "find a blog:",blog.group()
                 unique_blogs.add(blog.group())
-                print blog.group()
-            if len(unique_blogs)==0:
-                return
-            limit+=1
+            page+=1
+        print "got all user: ",uid," blogs"
+
+    def get_blog(self,blog_url):
+        
 
     def visit(self,uid):
         profile_base="http://www.renren.com/%s/profile?portal=profileFootprint&ref=profile_footprint#pdetails" % uid
-        try:
-            op=self.open(profile_base)
-        except:
-            print "error"
-            return
-        data=op.read()
-        print data
+        op=self.open(profile_base)
+     
     def get_my_friends_list(self): 
         friend_list_url="http://friend.renren.com/myfriendlistx.do"
         mylist=[]
         op = self.open(friend_list_url)
         data=op.read()
-        print data
         data=re.search('friends=\[{.*?}\];',data)
         data=data.group()
         data=data[8:-1]
@@ -89,7 +86,6 @@ class Renren:
                 data=op.read()
             except:
                 continue
-            print data
             status=json.loads(data)['doingArray']
             if len(status)==0:
                 return 
@@ -107,7 +103,7 @@ class Renren:
     def get_status(self,ofile,uid=None):
         status_base="http://status.renren.com/GetSomeomeDoingList.do?userId=%s&curpage=" % uid
         status_dict=[]
-        output=ofile#open('renren_friends_status','a')
+        output=ofile
         limit=0
         re_h=re.compile('</?\w+[^>]*>')
 
@@ -127,11 +123,9 @@ class Renren:
                 if s['content'].strip()!='':
                     print s['content']
                     line="%s\t%s\n" %(s['id'],json.dumps(s))
-                    #line="%s\t%s\t%s\t%s\n"%(s['id'],s['userId'],s['dtime'],s['content'])
                     status_dict.append(line.encode('utf-8'))
             limit+=1
             output.writelines(status_dict)
-        #output.flush()
 
     def search(self,ofile):
         output=ofile
@@ -178,7 +172,7 @@ class Renren:
                     continue
                 line='%s\t%s\t%s\n'%(uid,username,user_image)
                 buffer_lines.append(line.encode('utf-8'))
-                print uid#,username,user_image
+                print uid
                 time.sleep(random.randint(1,10))
             print buffer_lines
             output.writelines(buffer_lines) 

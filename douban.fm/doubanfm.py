@@ -11,8 +11,8 @@ class douban:
     opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookie),urllib2.HTTPHandler)
 
     params = {
-        "form_email":"hi.moonlight@gmail.com",
-        "form_password":"ericyue",
+        "form_email":"youremail",
+        "form_password":"password",
         "source":"index_nav" #没有的话登录不成功
     }
     def login(self):

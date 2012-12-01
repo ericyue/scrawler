@@ -1,31 +1,65 @@
-#encoding=utf-8
+#coding=utf-8
 import urllib2
 import time
 import random
+from datetime import datetime
 import re
 import json
 import multiprocessing
 import urllib
+from logging.handlers import RotatingFileHandler
 import cookielib
 from BeautifulSoup import BeautifulSoup as BS
-
+import logging
 
 class Renren:
+    LEVELS={'debug':logging.DEBUG,
+        'info':logging.INFO,
+        'warning':logging.WARNING,
+        'error':logging.ERROR,
+        'critical':logging.CRITICAL}
     cookie={"t":""}
     opener=urllib2.build_opener(urllib2.HTTPCookieProcessor(cookielib.CookieJar())) 
     urllib2.install_opener(opener)
-
+    logger=None
+    file_handler=None                    
+    console_handler=None
+    formatter=None
+    level=None
+    def __init__(self,log_level="debug"):
+        self.init_logger(log_level)        
+   
+    def init_logger(self,log_level):
+        self.formatter = logging.Formatter('%(asctime)s - %(levelname)-8s - <%(filename)s-%(funcName)s:%(lineno)d> : %(message)s')
+        LOG_FILENAME="./log/log_renren_module.dat"
+        self.level=self.LEVELS.get(log_level,logging.NOTSET)
+        self.logger = logging.getLogger()
+        self.logger.setLevel(self.level)
+        self.file_handler = RotatingFileHandler(LOG_FILENAME,10*1024*1024,10)
+        self.console_handler = logging.StreamHandler()
+        self.file_handler.setFormatter(self.formatter)   
+        self.console_handler.setFormatter(self.formatter)
+        self.logger.addHandler(self.file_handler)
+        self.logger.addHandler(self.console_handler)
+    
     def set_cookie(self,cookie):
         self.cookie['t']=cookie
-        print "new cookie:",cookie
-    
+        self.logger.info("set new cookie: %s" % cookie)
+        
+    def input_cookie(self,cookie):
+        new_cookie=raw_input("input new a cookie:") 
+        self.set_cookie(new_cookie)
+
     def open(self,url,params=None):
         req = urllib2.Request(url)
         cookie=urllib.urlencode(self.cookie)
         req.add_header('Cookie', cookie)
         if params:
+            self.logger.debug("parmas: %s" % params)
+            self.logger.debug("open: %s" % url)
             request = urllib2.urlopen(req,urllib.urlencode(params))
         else:
+            self.logger.debug("open: %s" % url)
             request = urllib2.urlopen(req)
         return request
          
@@ -34,7 +68,7 @@ class Renren:
         page=0
         unique_blogs=set() 
         while True:
-            print "parsing... ",blog_base+str(page)
+            self.logger.debug("parse %s" % (blog_base+str(page)))
             op=self.open(blog_base+str(page))
             data=op.read()
             blog_list=re.finditer("http://blog.renren.com/blog/[0-9]{4,12}/[0-9]{5,13}",data)
@@ -45,16 +79,18 @@ class Renren:
                     print "find a blog:",blog.group()
                 unique_blogs.add(blog.group())
             page+=1
-        print "got all user: ",uid," blogs"
+        self.logger.debug("got user ",uid," blogs")
 
     def get_blog(self,blog_url):
-        
+        pass
 
     def visit(self,uid):
         profile_base="http://www.renren.com/%s/profile?portal=profileFootprint&ref=profile_footprint#pdetails" % uid
+        self.logger.debug("visit %s" % uid)
         op=self.open(profile_base)
      
     def get_my_friends_list(self): 
+        self.logger.debug("get my friends'id list begin")
         friend_list_url="http://friend.renren.com/myfriendlistx.do"
         mylist=[]
         op = self.open(friend_list_url)
@@ -65,13 +101,16 @@ class Renren:
         data=data.replace('tr','Tr').replace('false','False')
         friends=eval(data)
         for f in friends:
+            self.logger.debug("add friend id : %s" % f['id'])
             mylist.append((f['id'],f['name'].encode('utf-8')))
+        self.logger.debug("get my friends's id end")
         if len(mylist)!=0:
             return mylist
         else:
             return None
 
     def get_new_status(self,today):
+        self.logger.debug("get new status begin")
         status_all_base="http://status.renren.com/GetFriendDoing.do?curpage="
         status_dict=[]
         output=open('./data/renren_new_status','a')
@@ -99,8 +138,13 @@ class Renren:
             limit+=1
             output.writelines(status_dict)
  
+        self.logger.debug("get new status end")
 
     def get_status(self,ofile,uid=None):
+        if not uid:
+            self.logger.error("uid cannot be None")
+            return False
+        self.logger.debug("get %s status" % uid)
         status_base="http://status.renren.com/GetSomeomeDoingList.do?userId=%s&curpage=" % uid
         status_dict=[]
         output=ofile
@@ -109,7 +153,7 @@ class Renren:
 
         while True:
             status_url=status_base+"%s" % limit
-            print status_url
+            self.logger.debug("get %s" % status_url)
             op = self.open(status_url)
             try:
                 data=op.read()
@@ -121,7 +165,7 @@ class Renren:
             for s in status:
                 s['content']=re_h.sub('',urllib.unquote(s['content']))
                 if s['content'].strip()!='':
-                    print s['content']
+                    self.logger.debug(s['content'].strip())
                     line="%s\t%s\n" %(s['id'],json.dumps(s))
                     status_dict.append(line.encode('utf-8'))
             limit+=1
@@ -139,21 +183,17 @@ class Renren:
                 break
             buffer_lines=[]
             search_url=search_base_url+str(10*loop)
-            print "processing - ",search_url
+            self.logger.debug("get" % search_url) 
             op = self.open(search_url)
-            print "read ok"
+            self.logger.debug("got page")
             data = op.read()
             user_ids=set()
             soup=BS(data)
-            print "parse html ok",len(data)
             result=soup('a')
-            
-            print "search for user_ids"
             for i in result:
                 if i['href'].find('&id=')!=-1:
                     user_ids.add(i['href'].split('id=')[1].split('&')[0])
-            print "got all ids on page"
-            print user_ids
+            self.logger.debug("got all ids on page")
             for uid in user_ids:
                 a+=1
                 profile_url=profile_base_url % uid
@@ -167,14 +207,11 @@ class Renren:
                 try:
                     user_image=profile_soup('img',{'id':'userpic'})[0]['src'] 
                 except Exception,what:
-                    print "error:image",uid
-                    print profile_soup('img',{'id':'userpic'})
+                    self.logger.error("error:image %s " % uid) 
                     continue
                 line='%s\t%s\t%s\n'%(uid,username,user_image)
                 buffer_lines.append(line.encode('utf-8'))
-                print uid
                 time.sleep(random.randint(1,10))
-            print buffer_lines
             output.writelines(buffer_lines) 
             output.flush()
         output.close()
